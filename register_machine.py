@@ -20,7 +20,7 @@ class StackInstructions(Enum):
 
 
 def push_to_stack(code, bits):
-
+    assert bits == 3
     global stack
     stack <<= bits
     if isinstance(code, Enum):
@@ -28,14 +28,13 @@ def push_to_stack(code, bits):
     assert code & ((1 << bits) - 1) == code
     assert bits != 4
     stack ^= code
-    # print(bin(stack))
 
 
 def pop_from_stack(bits):
+    assert bits == 3
     global stack
     code = stack & ((1 << bits) - 1)
     stack >>= bits
-    # print(bin(stack))
     return code
 
 
@@ -48,22 +47,22 @@ def determine_active_axis():
     if dy > 1:
         if active_axis != Y_AXIS:
             assert False
-            push_to_stack(active_axis, 2)
-            push_to_stack(StackInstructions.AXIS_ADJUSTED.value, 3)
+            # push_to_stack(active_axis, 3)
+            # push_to_stack(StackInstructions.AXIS_ADJUSTED.value, 3)
         active_axis = Y_AXIS
     elif dz > 1:
         if active_axis != Z_AXIS:
-            push_to_stack(active_axis, 2)
+            push_to_stack(active_axis, 3)
             push_to_stack(StackInstructions.AXIS_ADJUSTED.value, 3)
         active_axis = Z_AXIS
     elif dx > 1:
         if active_axis != X_AXIS:
-            push_to_stack(active_axis, 2)
+            push_to_stack(active_axis, 3)
             push_to_stack(StackInstructions.AXIS_ADJUSTED.value, 3)
         active_axis = X_AXIS
     else:
         if active_axis != NO_AXIS:
-            push_to_stack(active_axis, 2)
+            push_to_stack(active_axis, 3)
             push_to_stack(StackInstructions.AXIS_ADJUSTED.value, 3)
         active_axis = NO_AXIS
     # print(f"Determined active axis {active_axis}")
@@ -125,7 +124,7 @@ def recursively_install_1():
         just_installed = 1
     else:
         modify_active_axis(-1)
-        push_to_stack(StackInstructions.CONTEXT_1, 3)
+        push_to_stack(StackInstructions.CONTEXT_1.value, 3)
         recursively_install_1()
 
 
@@ -133,31 +132,31 @@ def recursively_install_2():
     # Context 2 for install
     modify_active_axis(-1)
     fetch_from_store("p")
-    push_to_stack(StackInstructions.CONTEXT_2, 3)
+    push_to_stack(StackInstructions.CONTEXT_2.value, 3)
     recursively_install_1()
 
 
 def recursively_install_3():
     # Context 3 for install
-    push_to_stack(StackInstructions.CONTEXT_5, 3)
+    push_to_stack(StackInstructions.CONTEXT_5.value, 3)
     determine_active_axis()
     global active_axis
     if active_axis == NO_AXIS:
         print(f"pulse {dx}")
         assert pop_from_stack(3) == StackInstructions.AXIS_ADJUSTED.value
-        active_axis = pop_from_stack(2)
+        active_axis = pop_from_stack(3)
         assert active_axis != NO_AXIS
         recursively_remove_1()  # can maybe be a goto into ri5
     else:
         modify_active_axis(-1)
         fetch_from_store("o")
-        push_to_stack(StackInstructions.CONTEXT_3, 3)
+        push_to_stack(StackInstructions.CONTEXT_3.value, 3)
         recursively_install_1()
 
 
 def recursively_install_4():
     # Context 4 for remove
-    push_to_stack(StackInstructions.CONTEXT_4, 3)
+    push_to_stack(StackInstructions.CONTEXT_4.value, 3)
     recursively_remove_1()
 
 
@@ -195,30 +194,30 @@ def recursively_remove_1():
     else:
         modify_active_axis(-2)
         fetch_from_store("sp")
-        push_to_stack(StackInstructions.CONTEXT_5, 3)
+        push_to_stack(StackInstructions.CONTEXT_5.value, 3)
         recursively_install_1()
 
 
 def recursively_remove_2():
     global just_installed
     global active_axis
-    push_to_stack(StackInstructions.CONTEXT_2, 3)
+    push_to_stack(StackInstructions.CONTEXT_2.value, 3)
     determine_active_axis()
     if active_axis == NO_AXIS:
         print(f"pulse {dx}")
         assert pop_from_stack(3) == StackInstructions.AXIS_ADJUSTED.value
-        active_axis = pop_from_stack(2)
+        active_axis = pop_from_stack(3)
         assert active_axis != NO_AXIS
         recursively_remove_1()
     else:
         modify_active_axis(-1)
         fetch_from_store("o")
-        push_to_stack(StackInstructions.CONTEXT_4, 3)
+        push_to_stack(StackInstructions.CONTEXT_4.value, 3)
         recursively_install_1()
 
 
 def recursively_remove_3():
-    push_to_stack(StackInstructions.CONTEXT_3, 3)
+    push_to_stack(StackInstructions.CONTEXT_3.value, 3)
     recursively_remove_1()
 
 
@@ -231,7 +230,7 @@ def recursively_remove_4():
 def recursively_remove_5():
     return_to_store("sp")
     modify_active_axis(1)
-    push_to_stack(StackInstructions.CONTEXT_1, 3)
+    push_to_stack(StackInstructions.CONTEXT_1.value, 3)
     recursively_remove_1()
 
 
@@ -252,8 +251,7 @@ def process_stack_instruction():
 
     instruction = pop_from_stack(3)
     if instruction == StackInstructions.AXIS_ADJUSTED.value:
-        active_axis = pop_from_stack(2)
-        # print(f"Set active axis to {_name_map[active_axis]}")
+        active_axis = pop_from_stack(3)
         return
 
     match instruction, just_installed:
@@ -283,72 +281,80 @@ def process_stack_instruction():
     return
 
 
-y_height = 2 # 32
+y_height = 2  # 32
 y_buffer = 3
 n = 4  # 256
-
 stack = 0
-just_installed = 0
-active_axis = 1
+just_installed = 1
+active_axis = Y_AXIS
+
+normal_out = sys.stdout
 with open("test42a.txt", "w", encoding="utf-8") as f:
     sys.stdout = f
-    for y in range(y_height):
-        for z in range(0, -n, -1):
-            for x in range(2, n + 2):
+    y1 = 3 * y_height + y_height + y_buffer
+    y2 = 0
+    while y1 != y_height + y_buffer:
+        y1 -= 3
+        z1 = 0
+        z2 = n
+        while z2 != 0:
+            z1 += 1
+            x = 2
+            while x != n + 2:
                 dx = x
-                dy = y
-                dz = 1-z
+                dy = y2
+                dz = z1
                 negative_z = 1
 
-                active_axis = Y_AXIS
-                # determine_active_axis()
-                stack = 0
-                # print(bin(stack))
-                recursively_remove_1()
-                while stack & 0b111 != 0:
-                    # print(bin(stack))
-                    process_stack_instruction()
-
-                dx = x
-                dy = 3 * (y_height - y - 1) + y_height + y_buffer
-                dz = z + n
-                negative_z = 0
-
-                # print("here")
-
-                active_axis = Y_AXIS
-                # determine_active_axis()
-                stack = 0
-                # print(bin(stack))
-                recursively_install_1()
-                while stack & 0b111 != 0:
-                    process_stack_instruction()
-                # exit()
-
-    for y in range(y_height - 1, -1, -1):
-        for z in range(0, -n, -1):
-            for x in range(2, n + 2):
-                dx = x
-                dz = 1-z
-                dy = 3 * (y_height - y - 1) + y_height + y_buffer
-                negative_z = 1
-
-                active_axis = Y_AXIS
-                stack = 0
                 recursively_remove_1()
                 while stack & 0b111 != 0:
                     process_stack_instruction()
 
                 dx = x
-                dz = z + n
-                dy = y
+                dy = y1
+                dz = z2
                 negative_z = 0
 
-                active_axis = Y_AXIS
-                stack = 0
                 recursively_install_1()
                 while stack & 0b111 != 0:
                     process_stack_instruction()
+                x += 1
+            z2 -= 1
+        y2 += 1
 
+    y1 = y_height
+    y2 = y_height + y_buffer
+    while y1 != 0:
+        y1 -= 1
+        z1 = 0
+        z2 = n
+        while z2 != 0:
+            z1 += 1
+            x = 2
+            while x != n + 2:
+                dx = x
+                dz = z1
+                dy = y2
+                negative_z = 1
 
+                recursively_remove_1()
+                while stack & 0b111 != 0:
+                    process_stack_instruction()
 
+                dx = x
+                dz = z2
+                dy = y1
+                negative_z = 0
+
+                recursively_install_1()
+                while stack & 0b111 != 0:
+                    process_stack_instruction()
+                x += 1
+            z2 -= 1
+        y2 += 3
+
+sys.stdout = normal_out
+
+negative_z = 1
+
+# print(dx, dy, dz, x, y, z, bin(stack), negative_z, just_installed)
