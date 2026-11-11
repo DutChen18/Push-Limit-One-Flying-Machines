@@ -1,3 +1,5 @@
+import sys
+
 y_height = 2 # 21
 y_buffer = 3
 
@@ -101,6 +103,7 @@ class FlyingMachine:
         else:
             print(f"pulse {dx}")
 
-
-f = FlyingMachine(2)
-f.move_machine()
+with open("test42.txt", "w", encoding="utf-8") as f:
+    sys.stdout = f
+    f = FlyingMachine(4)
+    f.move_machine()
