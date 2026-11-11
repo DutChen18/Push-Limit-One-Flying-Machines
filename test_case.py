@@ -60,7 +60,9 @@ class FlyingMachine:
 
     def remove(self, dx, dz, dy, cargo, negative_z):
         if dy > 1:
+            # determine_active_axis
             self.install(dx, dz, dy - 2, "ysp", negative_z)
+            # determine_active_axis
             self.pulse(dx, dz, dy - 2, negative_z)
             self.remove(dx, dz, dy - 2, "ysp", negative_z)
             self.remove(dx, dz, dy - 1, cargo, negative_z)
