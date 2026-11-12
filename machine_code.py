@@ -39,15 +39,15 @@ variables = {
     "active_axis": Y_AXIS,
     "y1":  3 * y_height + y_height + y_buffer,
     "y2":  0,
-    "z1": 0,
+    "z1": n,
     "z2": 0,
-    "x": 0,
-    "dx": 0,
+    "x": n + 2,
+    "dx": n + 1,
     "dy": 0,
-    "dz": 0,
-    "dummy": 0,
+    "dz": 1,
+    "dummy": 2,
     "first_loop": 1,
-    "negative_z": 1,
+    "negative_z": 0,
 
     # constants, don't modify until optimizing later
     "Y_HEIGHT": y_height,
@@ -193,10 +193,12 @@ def PULSE(X):
 
 TODO = -1
 UNUSED = -2
+HALT = -3
 
 instructions = {
     -1: UNDEFINED(),
     -2: UNDEFINED(),
+    -3: UNDEFINED(),
     # begin first main y while loop
     0: EQUALS("C2", "y1", 138, 1),
     1: ADD("MINUS_THREE", "y1", 20001),
@@ -226,11 +228,11 @@ instructions = {
     137: ADD("ONE", "y2", 0),
 
     # second main loop
-    138: COPY("Y_HEIGHT", "y1", 139),
-    139: COPY("C2", "y2", 140),
+    138: COPY("Y_HEIGHT", "y2", 139),
+    139: COPY("C2", "y1", 140),
     140: COPY("ZERO", "first_loop", 141),
-    141: EQUALS("ZERO", "y1", TODO, 142),
-    142: ADD("MINUS_ONE", "y1", 143),
+    141: EQUALS("ZERO", "y2", 160, 142),
+    142: ADD("MINUS_ONE", "y2", 143),
     143: COPY("ZERO", "z1", 144),
     144: COPY("N", "z2", 145),
     145: EQUALS("ZERO", "z2", 159, 146),
@@ -238,18 +240,21 @@ instructions = {
     147: COPY("TWO", "x", 148),
     148: EQUALS("C3", "x", 158, 149),
     149: COPY("x", "dx", 150),
-    150: COPY("y2", "dy", 151),
+    150: COPY("y1", "dy", 151),
     151: COPY("z1", "dz", 152),
     152: COPY("ONE", "negative_z", 901),
     # after processing first stack
     153: COPY("x", "dx", 154),
     154: COPY("z2", "dz", 155),
-    155: COPY("y1", "dy", 156),
+    155: COPY("y2", "dy", 156),
     156: COPY("ZERO", "negative_z", 51),
     # after processing second stack
     157: ADD("ONE", "x", 148),
     158: ADD("MINUS_ONE", "z2", 145),
-    159: ADD("THREE", "y2", 141),
+    159: ADD("THREE", "y1", 141),
+
+    # restore the variables to their initial states
+    160: COPY("ONE", "first_loop", HALT),
 
     # recursively_remove_1
     901: COPY("ZERO", "dummy", 9),
@@ -448,20 +453,23 @@ instructions = {
 
 
 def run_instructions(start=0):
-    current_instruction = instructions[start]
+    new_code = start
 
     print(len(variables), len(instructions))
+    print(variables)
     with open("test42b.txt", "w", encoding="utf-8") as f:
+        out = sys.stdout
         sys.stdout = f
-        while True:
-            new_code = current_instruction()
+        while new_code != HALT:
+
 
             # print(new_code)
             # print(bin(stack))
             # print(variables)
-
             current_instruction = instructions[new_code]
+            new_code = current_instruction()
             # time.sleep(0.1)
-
-
+        sys.stdout = out
+    print(len(variables), len(instructions))
+    print(variables)
 run_instructions()
