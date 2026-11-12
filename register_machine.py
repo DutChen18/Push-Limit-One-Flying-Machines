@@ -299,7 +299,7 @@ first_loop = 1
 
 
 normal_out = sys.stdout
-with open("test42a.txt", "w", encoding="utf-8") as f:
+with open("test22a.txt", "w", encoding="utf-8") as f:
     sys.stdout = f
     y1 = 3 * y_height + y_height + y_buffer
     y2 = 0
@@ -330,7 +330,7 @@ with open("test42a.txt", "w", encoding="utf-8") as f:
                 x += 1
             z2 -= 1
         y2 += 1
-
+    # exit()
     y1 = y_height
     y2 = y_height + y_buffer
     first_loop = 0

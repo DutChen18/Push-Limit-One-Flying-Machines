@@ -9,6 +9,7 @@
 # RETURN(cargo, X)
 # RETURN_BASE(cargo, X)
 # PULSE(cargo, X)
+import sys
 import time
 
 stack = 0
@@ -39,8 +40,8 @@ variables = {
     "y1":  3 * y_height + y_height + y_buffer,
     "y2":  0,
     "z1": 0,
-    "z2": n,
-    "x": 2,
+    "z2": 0,
+    "x": 0,
     "dx": 0,
     "dy": 0,
     "dz": 0,
@@ -51,7 +52,6 @@ variables = {
     # constants, don't modify until optimizing later
     "Y_HEIGHT": y_height,
     "N": n,
-
     "C1": 3 * y_height + y_height + y_buffer,
     "C2": y_height + y_buffer,
     "C3": n + 2,
@@ -120,7 +120,7 @@ def COPY(x, y, Z):
 
 def UNDEFINED():
     def undefined():
-        print("Hit undefined behavior")
+        sys.stderr.write("Hit undefined behavior\n")
         assert False
     return undefined
 
@@ -198,21 +198,58 @@ instructions = {
     -1: UNDEFINED(),
     -2: UNDEFINED(),
     # begin first main y while loop
-    0: EQUALS("C2", "y1", TODO, 1),
-    1: ADD("MINUS_THREE", "y1", 2),
+    0: EQUALS("C2", "y1", 138, 1),
+    1: ADD("MINUS_THREE", "y1", 20001),
+    20001: COPY("ZERO", "z1", 20002),
+    20002: COPY("N", "z2", 2),
     # begin first main z while loop
-    2: EQUALS("ZERO", "z2", TODO, 3),
-    3: ADD("ONE", "z1", 4),
+    2: EQUALS("ZERO", "z2", 137, 3),
+    3: ADD("ONE", "z1", 40001),
+    40001: COPY("TWO", "x", 4),
     # begin first main x while loop
-    4: EQUALS("C3", "x", TODO, 5),
+    4: EQUALS("C3", "x", 136, 5),
     5: COPY("x", "dx", 6),
     6: COPY("y2", "dy", 7),
     7: COPY("z1", "dz", 8),
     8: COPY("ONE", "negative_z", 901),
+    # after stack processing, update temp variables
     801: COPY("x", "dx", 802),
     802: COPY("z2", "dz", 803),
     803: COPY("y1", "dy", 804),
     804: COPY("ZERO", "negative_z", 51),
+    # after second stack processing, update temp variables
+    # increment x counter in x while loop
+    135: ADD("ONE", "x", 4),
+    # increment z counter in z while loop
+    136: ADD("MINUS_ONE", "z2", 2),
+    # increment y counter in y while loop
+    137: ADD("ONE", "y2", 0),
+
+    # second main loop
+    138: COPY("Y_HEIGHT", "y1", 139),
+    139: COPY("C2", "y2", 140),
+    140: COPY("ZERO", "first_loop", 141),
+    141: EQUALS("ZERO", "y1", TODO, 142),
+    142: ADD("MINUS_ONE", "y1", 143),
+    143: COPY("ZERO", "z1", 144),
+    144: COPY("N", "z2", 145),
+    145: EQUALS("ZERO", "z2", 159, 146),
+    146: ADD("ONE", "z1", 147),
+    147: COPY("TWO", "x", 148),
+    148: EQUALS("C3", "x", 158, 149),
+    149: COPY("x", "dx", 150),
+    150: COPY("y2", "dy", 151),
+    151: COPY("z1", "dz", 152),
+    152: COPY("ONE", "negative_z", 901),
+    # after processing first stack
+    153: COPY("x", "dx", 154),
+    154: COPY("z2", "dz", 155),
+    155: COPY("y1", "dy", 156),
+    156: COPY("ZERO", "negative_z", 51),
+    # after processing second stack
+    157: ADD("ONE", "x", 148),
+    158: ADD("MINUS_ONE", "z2", 145),
+    159: ADD("THREE", "y2", 141),
 
     # recursively_remove_1
     901: COPY("ZERO", "dummy", 9),
@@ -306,7 +343,7 @@ instructions = {
     65: POP(76, 126),  # _11 0
     66: POP(77, 102),  # _01 0
     67: POP(UNUSED, 108),  # _10 0
-    68: POP(99, TODO),  # _00 0
+    68: POP(99, 7601),  # _00 0
 
     69: POP(70, 71),  # ___ 1
 
@@ -320,8 +357,8 @@ instructions = {
     # 111 on stack, just_removed anything
     76: ADD("ONE", "active_axis", 61),
     7601: EQUALS("ONE", "negative_z", 7602, 7603),
-    7602: EQUALS("ONE", "first_loop", 801, TODO),
-    7603: EQUALS("ONE", "first_loop", TODO, TODO),
+    7602: EQUALS("ONE", "first_loop", 801, 153),
+    7603: EQUALS("ONE", "first_loop", 135, 157),
 
     # rr2
     77: PUSHc(0, 78),
@@ -407,21 +444,24 @@ instructions = {
     133: PUSHc(1, 134),
     134: PUSHc(1, 3201),
 
-    # we have processed all the stack instructions, decode where in
-    # the loops we are
-
 }
 
 
 def run_instructions(start=0):
     current_instruction = instructions[start]
-    while True:
-        new_code = current_instruction()
-        print(new_code)
-        print(bin(stack))
-        print(variables)
-        current_instruction = instructions[new_code]
-        # time.sleep(0.1)
+
+    print(len(variables), len(instructions))
+    with open("test42b.txt", "w", encoding="utf-8") as f:
+        sys.stdout = f
+        while True:
+            new_code = current_instruction()
+
+            # print(new_code)
+            # print(bin(stack))
+            # print(variables)
+
+            current_instruction = instructions[new_code]
+            # time.sleep(0.1)
 
 
 run_instructions()
