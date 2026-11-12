@@ -275,9 +275,9 @@ def process_stack_instruction():
             recursively_remove_5()
         case StackInstructions.CONTEXT_1.value, 1:
             recursively_remove_6()
-        case StackInstructions.STACK_FINISHED.value, 0:
-            recursively_install_1()
         case StackInstructions.STACK_FINISHED.value, 1:
+            recursively_install_1()
+        case StackInstructions.STACK_FINISHED.value, 0:
             recursively_remove_1()
         case 000, _:
             print(f"DEFAULT {instruction} {just_removed}")
@@ -288,7 +288,7 @@ y_height = 2  # 32
 y_buffer = 3
 n = 4  # 256
 stack = 0
-just_removed = 1
+just_removed = 0
 active_axis = Y_AXIS
 
 normal_out = sys.stdout
@@ -309,20 +309,20 @@ with open("test42a.txt", "w", encoding="utf-8") as f:
                 dz = z1
                 negative_z = 1
 
-                just_removed = 1
-                process_stack_instruction()
-                while stack & 0b111 != 0:
+                while True:
                     process_stack_instruction()
+                    if stack & 0b111 == 0:
+                        break
 
                 dx = x
                 dy = y1
                 dz = z2
                 negative_z = 0
 
-                just_removed = 0
-                process_stack_instruction()
-                while stack & 0b111 != 0:
+                while True:
                     process_stack_instruction()
+                    if stack & 0b111 == 0:
+                        break
                 x += 1
             z2 -= 1
         y2 += 1
@@ -338,24 +338,23 @@ with open("test42a.txt", "w", encoding="utf-8") as f:
             x = 2
             while x != n + 2:
                 dx = x
-                dz = z1
                 dy = y2
+                dz = z1
                 negative_z = 1
 
-                just_removed = 1
-                process_stack_instruction()
-                while stack & 0b111 != 0:
+                while True:
                     process_stack_instruction()
-
+                    if stack & 0b111 == 0:
+                        break
                 dx = x
                 dz = z2
                 dy = y1
                 negative_z = 0
 
-                just_removed = 0
-                process_stack_instruction()
-                while stack & 0b111 != 0:
+                while True:
                     process_stack_instruction()
+                    if stack & 0b111 == 0:
+                        break
                 x += 1
             z2 -= 1
         y2 += 3
