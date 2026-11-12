@@ -285,7 +285,7 @@ def process_stack_instruction():
 
 
 y_height = 2  # 32
-y_buffer = 3
+y_buffer = 2
 n = 4  # 256
 stack = 0
 just_removed = 0
@@ -361,6 +361,6 @@ with open("test42a.txt", "w", encoding="utf-8") as f:
 
 sys.stdout = normal_out
 
-negative_z = 1
+
 
 # print(dx, dy, dz, x, y, z, bin(stack), negative_z, just_installed)

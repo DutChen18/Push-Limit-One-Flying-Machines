@@ -1,7 +1,7 @@
 import sys
 
-y_height = 2 # 21
-y_buffer = 3
+y_height = 2  # 21
+y_buffer = 2
 
 
 class FlyingMachine:
