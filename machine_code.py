@@ -38,7 +38,7 @@ variables = {
     "just_removed": 0,
     "active_axis": Y_AXIS,
     "y1":  3 * y_height + y_height + y_buffer,
-    "y2":  0,
+    "y2": -1,
     "z1": n,
     "z2": 0,
     "x": n + 2,
@@ -55,6 +55,7 @@ variables = {
     "C1": 3 * y_height + y_height + y_buffer,
     "C2": y_height + y_buffer,
     "C3": n + 2,
+    "C4": y_height + y_buffer - 3,
     "ZERO": 0,
     "ONE": 1,
     "TWO": 2,
@@ -69,8 +70,15 @@ variables = {
 }
 
 
+states = set()
+
+
 def PUSHc(c, X):
     assert c in {0, 1}
+    v = ("push", c, X)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
 
     def push():
         global stack
@@ -81,6 +89,10 @@ def PUSHc(c, X):
 
 
 def POP(IF_ONE, IF_ZERO):
+    v = ("pop", IF_ONE, IF_ZERO)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     def pop():
         global stack
         bit = stack & 1
@@ -90,6 +102,10 @@ def POP(IF_ONE, IF_ZERO):
 
 
 def ADD(x, y, Y):
+    v = ("ADD", x, y, Y)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     def add():
         global variables
         variables[y] += variables[x]
@@ -98,6 +114,10 @@ def ADD(x, y, Y):
 
 
 def EQUALS(x, y, IF_TRUE, IF_FALSE):
+    v = ("EQUALS", x, y, IF_TRUE, IF_FALSE)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     def equals():
         global variables
         return IF_TRUE if variables[x] == variables[y] else IF_FALSE
@@ -105,6 +125,10 @@ def EQUALS(x, y, IF_TRUE, IF_FALSE):
 
 
 def G1(x, IF_TRUE, IF_FALSE):
+    v = ("G1", x, IF_TRUE, IF_FALSE)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     def ge2():
         global variables
         return IF_TRUE if variables[x] > 1 else IF_FALSE
@@ -112,6 +136,10 @@ def G1(x, IF_TRUE, IF_FALSE):
 
 
 def COPY(x, y, Z):
+    v = ("COPY", x, y, Z)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     def copy():
         variables[y] = variables[x]
         return Z
@@ -126,6 +154,10 @@ def UNDEFINED():
 
 
 def FETCH(X, cargo):
+    v = ("FETCH", X, cargo)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     global variables
 
     def fetch():
@@ -142,6 +174,10 @@ def FETCH(X, cargo):
 
 
 def FETCH_BASE(X):
+    v = ("FETCH_BASE", X)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     global variables
 
     def fetch():
@@ -156,6 +192,10 @@ def FETCH_BASE(X):
 
 
 def RETURN(X, cargo):
+    v = ("RETURN", X)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     global variables
 
     def ret():
@@ -172,6 +212,10 @@ def RETURN(X, cargo):
     return ret
 
 def RETURN_BASE(X):
+    v = ("RETURN_BASE", X)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     global variables
 
     def fetch():
@@ -185,6 +229,10 @@ def RETURN_BASE(X):
     return fetch
 
 def PULSE(X):
+    v = ("PULSE", X)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
     global variables
     def pulse():
         print(f"pulse {variables["dx"]}")
@@ -199,25 +247,31 @@ instructions = {
     -1: UNDEFINED(),
     -2: UNDEFINED(),
     -3: UNDEFINED(),
-    # begin first main y while loop
-    0: EQUALS("C2", "y1", 138, 1),
-    1: ADD("MINUS_THREE", "y1", 20001),
+    # begin main loop
+    0: EQUALS("ONE", "first_loop", 10001, 10002),
+    10001: EQUALS("C2", "y1", 138, 10003),
+    10002: EQUALS("ZERO", "y1", 160, 10004),
+    10003: ADD("MINUS_THREE", "y1", 10005),
+    10004: ADD("MINUS_ONE", "y1", 10006),
+    10005: ADD("ONE", "y2", 20001),
+    10006: ADD("THREE", "y2", 20001),
+
     20001: COPY("ZERO", "z1", 20002),
     20002: COPY("N", "z2", 2),
     # begin first main z while loop
-    2: EQUALS("ZERO", "z2", 137, 3),
+    2: EQUALS("ZERO", "z2", 0, 3),
     3: ADD("ONE", "z1", 40001),
     40001: COPY("TWO", "x", 4),
     # begin first main x while loop
     4: EQUALS("C3", "x", 136, 5),
-    5: COPY("x", "dx", 6),
-    6: COPY("y2", "dy", 7),
+    5: COPY("y2", "dy", 6),
+    6: COPY("x", "dx", 7),
     7: COPY("z1", "dz", 8),
     8: COPY("ONE", "negative_z", 901),
     # after stack processing, update temp variables
-    801: COPY("x", "dx", 802),
+    801: COPY("y1", "dy",  802),
     802: COPY("z2", "dz", 803),
-    803: COPY("y1", "dy", 804),
+    803: COPY("x", "dx", 804),
     804: COPY("ZERO", "negative_z", 51),
     # after second stack processing, update temp variables
     # increment x counter in x while loop
@@ -225,33 +279,24 @@ instructions = {
     # increment z counter in z while loop
     136: ADD("MINUS_ONE", "z2", 2),
     # increment y counter in y while loop
-    137: ADD("ONE", "y2", 0),
 
     # second main loop
-    138: COPY("Y_HEIGHT", "y2", 139),
-    139: COPY("C2", "y1", 140),
-    140: COPY("ZERO", "first_loop", 141),
-    141: EQUALS("ZERO", "y2", 160, 142),
-    142: ADD("MINUS_ONE", "y2", 143),
-    143: COPY("ZERO", "z1", 144),
-    144: COPY("N", "z2", 145),
-    145: EQUALS("ZERO", "z2", 159, 146),
-    146: ADD("ONE", "z1", 147),
-    147: COPY("TWO", "x", 148),
-    148: EQUALS("C3", "x", 158, 149),
-    149: COPY("x", "dx", 150),
-    150: COPY("y1", "dy", 151),
-    151: COPY("z1", "dz", 152),
-    152: COPY("ONE", "negative_z", 901),
-    # after processing first stack
-    153: COPY("x", "dx", 154),
-    154: COPY("z2", "dz", 155),
-    155: COPY("y2", "dy", 156),
-    156: COPY("ZERO", "negative_z", 51),
-    # after processing second stack
-    157: ADD("ONE", "x", 148),
-    158: ADD("MINUS_ONE", "z2", 145),
-    159: ADD("THREE", "y1", 141),
+    138: COPY("Y_HEIGHT", "y1", 139),
+    139: COPY("C4", "y2", 140),
+    140: COPY("ZERO", "first_loop", 0),
+    # 141: EQUALS("ZERO", "y1", 160, 142),
+    # 142: ADD("MINUS_ONE", "y1", 143),
+    # 143: COPY("ZERO", "z1", 144),
+    # 144: COPY("N", "z2", 145),
+    # 145: EQUALS("ZERO", "z2", 159, 146),
+    #     146: ADD("ONE", "z1", 147),
+    #     147: COPY("TWO", "x", 148),
+    #     148: EQUALS("C3", "x", 158, 5),
+    # # after processing first stack
+    # # after processing second stack
+    # 157: ADD("ONE", "x", 148),
+    # 158: ADD("MINUS_ONE", "z2", 145),
+    # 159: ADD("THREE", "y2", 141),
 
     # restore the variables to their initial states
     160: COPY("ONE", "first_loop", HALT),
@@ -343,15 +388,14 @@ instructions = {
     70: POP(72, 73),  # __1 1
     71: POP(74, 75),  # __0 1
 
-    72: POP(76, 132),  # _11 1
+    72: POP(76, 129),  # _11 1
     73: POP(118, 96),  # _01 1
     74: POP(UNUSED, 90),  # _10 1
     75: POP(129, 7601),  # _00 1
     # 111 on stack, just_removed anything
     76: ADD("ONE", "active_axis", 61),
-    7601: EQUALS("ONE", "negative_z", 7602, 7603),
-    7602: EQUALS("ONE", "first_loop", 801, 153),
-    7603: EQUALS("ONE", "first_loop", 135, 157),
+    7601: EQUALS("ONE", "negative_z", 801, 135),
+    # 7603: EQUALS("ONE", "first_loop", 135, 157),
 
     # rr2
     77: PUSHc(0, 78),
@@ -389,20 +433,14 @@ instructions = {
     # ri2
     102: FETCH(103, "p"),
     103: PUSHc(0, 104),
-    104: PUSHc(1, 105),
-    105: PUSHc(0, 3209),
+    104: PUSHc(1, 89),
 
     # ri3
     108: PUSHc(1, 109),
     109: PUSHc(0, 110),
     110: PUSHc(1, 111),
     111: COPY("THREE", "dummy", 9),
-    112: EQUALS("NO_AXIS", "active_axis", 113, 120),
-    113: PULSE(114),
-    114: POP(115, 115),
-    115: POP(116, 116),
-    116: POP(117, 117),
-    117: ADD("ONE", "active_axis", 901),
+    112: EQUALS("NO_AXIS", "active_axis", 82, 120),
 
     # ri6
     118: RETURN(119, "p"),
@@ -411,8 +449,7 @@ instructions = {
     # other branch of ri3
     120: FETCH(121, "o"),
     121: PUSHc(0, 122),
-    122: PUSHc(1, 123),
-    123: PUSHc(1, 3209),
+    122: PUSHc(1, 57),
     # call modify_active_axis
 
     # ri4
@@ -421,12 +458,9 @@ instructions = {
     128: PUSHc(0, 901),
 
     # ri5
-    129: RETURN(131, "o"),
-    131: PUSHc(0, 3201),
+    129: RETURN(92, "o"),
 
-    # rr4
-    132: RETURN(134, "o"),
-    134: PUSHc(0, 3201),
+    # rr4 is ri5???
 
 }
 
@@ -436,11 +470,12 @@ def run_instructions(start=0):
 
     print(len(variables), len(instructions))
     print(variables)
+    witnessed_variables = set()
     with open("test42b.txt", "w", encoding="utf-8") as f:
         out = sys.stdout
         sys.stdout = f
         while new_code != HALT:
-
+            witnessed_variables.add(new_code)
 
             # print(new_code)
             # print(bin(stack))
@@ -449,6 +484,6 @@ def run_instructions(start=0):
             new_code = current_instruction()
             # time.sleep(0.1)
         sys.stdout = out
-    print(len(variables), len(instructions))
+    print(len(variables), len(instructions), len(witnessed_variables) + 3)
     print(variables)
 run_instructions()

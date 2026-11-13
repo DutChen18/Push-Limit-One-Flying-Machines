@@ -296,71 +296,53 @@ stack = 0
 just_removed = 0
 active_axis = Y_AXIS
 first_loop = 1
+dx = 0
+dy = 0
+dz = 0
+negative_z = 0
 
+def main_loop():
+    global first_loop
+    global dx
+    global dy
+    global dz
+    global negative_z
+    y1 = 3 * y_height + y_height + y_buffer if first_loop == 1 else y_height
+    y2 = -1 if first_loop == 1 else y_height + y_buffer - 3
+    while y1 != (y_height + y_buffer if first_loop == 1 else 0):
+        y1 -= 3 if first_loop == 1 else 1
+        y2 += 1 if first_loop == 1 else 3
+        z1 = 0
+        z2 = n
+        while z2 != 0:
+            z1 += 1
+            x = 2
+            while x != n + 2:
+                dx = x
+                dy = y2
+                dz = z1
+                negative_z = 1
+
+                recursively_remove_1()
+                while stack & 0b111 != 0:
+                    process_stack_instruction()
+
+                dx = x
+                dy = y1
+                dz = z2
+                negative_z = 0
+                recursively_install_1()
+                while stack & 0b111 != 0:
+                    process_stack_instruction()
+                x += 1
+            z2 -= 1
 
 normal_out = sys.stdout
-with open("test22a.txt", "w", encoding="utf-8") as f:
+with open("test42a.txt", "w", encoding="utf-8") as f:
     sys.stdout = f
-    y1 = 3 * y_height + y_height + y_buffer
-    y2 = 0
-    while y1 != y_height + y_buffer:
-        y1 -= 3
-        z1 = 0
-        z2 = n
-        while z2 != 0:
-            z1 += 1
-            x = 2
-            while x != n + 2:
-                dx = x
-                dy = y2
-                dz = z1
-                negative_z = 1
-
-                recursively_remove_1()
-                while stack & 0b111 != 0:
-                    process_stack_instruction()
-
-                dx = x
-                dy = y1
-                dz = z2
-                negative_z = 0
-                recursively_install_1()
-                while stack & 0b111 != 0:
-                    process_stack_instruction()
-                x += 1
-            z2 -= 1
-        y2 += 1
-    # exit()
-    y1 = y_height
-    y2 = y_height + y_buffer
+    main_loop()
     first_loop = 0
-    while y1 != 0:
-        y1 -= 1
-        z1 = 0
-        z2 = n
-        while z2 != 0:
-            z1 += 1
-            x = 2
-            while x != n + 2:
-                dx = x
-                dy = y2
-                dz = z1
-                negative_z = 1
-
-                recursively_remove_1()
-                while stack & 0b111 != 0:
-                    process_stack_instruction()
-                dx = x
-                dz = z2
-                dy = y1
-                negative_z = 0
-
-                recursively_install_1()
-                while stack & 0b111 != 0:
-                    process_stack_instruction()
-                x += 1
-            z2 -= 1
-        y2 += 3
+    main_loop()
 
 sys.stdout = normal_out
 
