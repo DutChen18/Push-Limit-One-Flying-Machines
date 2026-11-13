@@ -437,15 +437,13 @@ instructions = {
 
     # other branch of ri3
     120: FETCH(121, "o"),
-    121: PUSHc(1, 122),
-    122: PUSHc(1, 123),
-    123: PUSHc(0, 3209),
+    121: PUSHc(1, 104),
+    # 122: PUSHc(1, 89),
     # call modify_active_axis
 
     # ri4
     126: PUSHc(1, 127),
-    127: PUSHc(0, 128),
-    128: PUSHc(0, 901),
+    127: PUSHc(0, 101),
 
     # ri5
     129: RETURN(92, "o"),
