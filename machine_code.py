@@ -62,7 +62,6 @@ variables = {
     "THREE": 3,
     "MINUS_ONE": -1,
     "MINUS_TWO": -2,
-    "MINUS_THREE": -3,
 }
 
 
@@ -108,6 +107,17 @@ def ADD(x, y, Y):
         return Y
     return add
 
+
+def SUB(x, y, Y):
+    v = ("SUB", x, y, Y)
+    if v in states:
+        print(f"duplicate state {v}")
+    states.add(v)
+    def sub():
+        global variables
+        variables[y] -= variables[x]
+        return Y
+    return sub
 
 def EQUALS(x, y, IF_TRUE, IF_FALSE):
     v = ("EQUALS", x, y, IF_TRUE, IF_FALSE)
@@ -244,8 +254,8 @@ instructions = {
     0: EQUALS("ONE", "first_loop", 10001, 10002),
     10001: EQUALS("C2", "y1", 138, 10003),
     10002: EQUALS("ZERO", "y1", 160, 10004),
-    10003: ADD("MINUS_THREE", "y1", 10005),
-    10004: ADD("MINUS_ONE", "y1", 10006),
+    10003: SUB("THREE", "y1", 10005),
+    10004: SUB("ONE", "y1", 10006),
     10005: ADD("ONE", "y2", 20001),
     10006: ADD("THREE", "y2", 20001),
 
@@ -270,7 +280,7 @@ instructions = {
     # increment x counter in x while loop
     135: ADD("ONE", "x", 4),
     # increment z counter in z while loop
-    136: ADD("MINUS_ONE", "z2", 2),
+    136: SUB("ONE", "z2", 2),
     # increment y counter in y while loop
 
     # second main loop
@@ -377,7 +387,6 @@ instructions = {
     # 111 on stack, just_removed anything
     76: ADD("ONE", "active_axis", 61),
     7601: EQUALS("ONE", "negative_z", 801, 135),
-    # 7603: EQUALS("ONE", "first_loop", 135, 157),
 
     # rr2
     77: PUSHc(0, 78),
