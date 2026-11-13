@@ -63,10 +63,8 @@ variables = {
     "MINUS_ONE": -1,
     "MINUS_TWO": -2,
     "MINUS_THREE": -3,
-    "Y_AXIS": Y_AXIS,
-    "X_AXIS": X_AXIS,
-    "Z_AXIS": Z_AXIS,
-    "NO_AXIS": NO_AXIS,
+    "ONE": 1,
+    "ZERO": 0,
 }
 
 
@@ -294,32 +292,32 @@ instructions = {
     901: COPY("ZERO", "dummy", 9),
     # determine_active_axis()
     9: G1("dy", 10, 11),
-    10: COPY("Y_AXIS", "active_axis", 26),
-    11: EQUALS("Y_AXIS", "active_axis", 12, 15),
+    10: COPY("THREE", "active_axis", 26),
+    11: EQUALS("THREE", "active_axis", 12, 15),
     12: PUSHc(1, 13),
     13: PUSHc(1, 14),
     14: PUSHc(1, 15),
     # handle z
     15: G1("dz", 16, 17),
-    16: COPY("Z_AXIS", "active_axis", 26),
+    16: COPY("TWO", "active_axis", 26),
     17: G1("active_axis", 18, 21),
     18: PUSHc(1, 19),
     19: PUSHc(1, 20),
     20: PUSHc(1, 21),
     # handle x
     21: G1("dx", 22, 23),
-    22: COPY("X_AXIS", "active_axis", 26),
+    22: COPY("ONE", "active_axis", 26),
     23: PUSHc(1, 24),
     24: PUSHc(1, 25),
     25: PUSHc(1, 2601),
-    2601: COPY("NO_AXIS", "active_axis", 26),
+    2601: COPY("ZERO", "active_axis", 26),
     # decode where we called determine_active_axis
     26: G1("dummy", 28, 27),
     27: EQUALS("ZERO", "dummy", 29, 52),
     28: EQUALS("TWO", "dummy", 81, 112),
 
     # recursively_remove_1 after call to determine_active_axis
-    29: EQUALS("NO_AXIS", "active_axis", 30, 3208),
+    29: EQUALS("ZERO", "active_axis", 30, 3208),
     30: RETURN_BASE(31),
     31: COPY("ONE", "just_removed", 61),  # return from rr1
 
@@ -330,9 +328,9 @@ instructions = {
     3202: COPY("TWO", "dummy", 33),
 
     # modify_active_axis(dummy)
-    33: EQUALS("Y_AXIS", "active_axis", 34, 35),
+    33: EQUALS("THREE", "active_axis", 34, 35),
     34: ADD("dummy", "dy", 38),
-    35: EQUALS("Z_AXIS", "active_axis", 36, 37),
+    35: EQUALS("TWO", "active_axis", 36, 37),
     36: ADD("dummy", "dz", 38),
     37: ADD("dummy", "dx", 38),
     # decode where we called modify_active_axis
@@ -353,7 +351,7 @@ instructions = {
     # recursively install 1
     # call determine_active_axis
     51: COPY("ONE", "dummy", 9),
-    52: EQUALS("NO_AXIS", "active_axis", 53, 55),
+    52: EQUALS("ZERO", "active_axis", 53, 55),
     53: FETCH_BASE(54),
     54: COPY("ZERO", "just_removed", 61),  # return from RI1
     55: PUSHc(0, 56),
@@ -391,7 +389,7 @@ instructions = {
     78: PUSHc(1, 79),
     79: PUSHc(0, 80),
     80: COPY("TWO", "dummy", 9),
-    81: EQUALS("NO_AXIS", "active_axis", 82, 86),
+    81: EQUALS("ZERO", "active_axis", 82, 86),
     82: PULSE(8301),
     8301: POP(8302, 8302),
     8302: POP(8303, 8303),
@@ -429,7 +427,7 @@ instructions = {
     109: PUSHc(0, 110),
     110: PUSHc(1, 111),
     111: COPY("THREE", "dummy", 9),
-    112: EQUALS("NO_AXIS", "active_axis", 82, 120),
+    112: EQUALS("ZERO", "active_axis", 82, 120),
 
     # ri6
     118: RETURN(119, "p"),
