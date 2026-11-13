@@ -63,8 +63,6 @@ variables = {
     "MINUS_ONE": -1,
     "MINUS_TWO": -2,
     "MINUS_THREE": -3,
-    "ONE": 1,
-    "ZERO": 0,
 }
 
 
@@ -242,9 +240,6 @@ UNUSED = -2
 HALT = -3
 
 instructions = {
-    -1: UNDEFINED(),
-    -2: UNDEFINED(),
-    -3: UNDEFINED(),
     # begin main loop
     0: EQUALS("ONE", "first_loop", 10001, 10002),
     10001: EQUALS("C2", "y1", 138, 10003),
@@ -471,6 +466,6 @@ def run_instructions(start=0):
             new_code = current_instruction()
             # time.sleep(0.1)
         sys.stdout = out
-    print(len(variables), len(instructions), len(witnessed_variables) + 3)
+    print(len(variables), len(instructions), len(witnessed_variables))
     print(variables)
 run_instructions()
