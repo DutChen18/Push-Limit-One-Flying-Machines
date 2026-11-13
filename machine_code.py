@@ -1,16 +1,11 @@
-# PUSHc(X) pushes constant c in {0,1} to the stack, goes to X
+# PUSH(X) pushes constant c in {0,1} to the stack, goes to X
 # POP(X, Y) - pops a bit from stack, goes to X if 0, else Y.
 # ADDc(x, Y) - adds c to x (-16 <= c <= 15) then goes to Y.
 # EQUALS(x, y, Z, W) goes to Z if x == y else W.
 # GE2(x, Y, Z) goes to Y if x >= 2, else Z.
 # COPY(x, y, Z) copies x to y, then goes to Z
-# FETCH(cargo, X)
-# FETCH_BASE(cargo, X)
-# RETURN(cargo, X)
-# RETURN_BASE(cargo, X)
-# PULSE(cargo, X)
+
 import sys
-import time
 
 stack = 0
 
@@ -19,13 +14,13 @@ Z_AXIS = 0b10
 X_AXIS = 0b01
 NO_AXIS = 0b00
 
-STACK_FINISHED = 0b000
-AXIS_ADJUSTED = 0b11
-CONTEXT_1 = 0b001
-CONTEXT_2 = 0b010
-CONTEXT_3 = 0b110
-CONTEXT_4 = 0b100
-CONTEXT_5 = 0b101
+# STACK_FINISHED = 0b000
+# AXIS_ADJUSTED = 0b11
+# CONTEXT_1 = 0b001
+# CONTEXT_2 = 0b010
+# CONTEXT_3 = 0b110
+# CONTEXT_4 = 0b100
+# CONTEXT_5 = 0b101
 
 _name_map = {Y_AXIS: "y", X_AXIS: "x", Z_AXIS: "z", NO_AXIS: "base"}
 
@@ -34,7 +29,7 @@ y_height = 2  # 32
 y_buffer = 2
 n = 4
 
-variables = {
+dynamic_variables = {
     "just_removed": 0,
     "active_axis": Y_AXIS,
     "y1":  3 * y_height + y_height + y_buffer,
@@ -48,7 +43,9 @@ variables = {
     "dummy": 2,
     "first_loop": 1,
     "negative_z": 0,
+}
 
+constants = {
     # constants, don't modify until optimizing later
     "Y_HEIGHT": y_height,
     "N": n,
@@ -64,190 +61,274 @@ variables = {
     "MINUS_TWO": -2,
 }
 
+variables = constants | dynamic_variables
+
+
+supported_branch_instructions = {
+    "NONE": 0,
+    "POP": 1,
+    "NONZERO": 2,
+    "NEGATIVE": 3,
+}
+
+supported_register_instructions = {
+    "ADD": 0,
+    "SUB": 1,
+    "COPY": 2,
+    "XOR": 3,
+}
+
+supported_stack_instructions = {
+    "NONE": 0,
+    "TOGGLE": 1,
+    "PUSH_0": 2,
+    "PUSH_1": 3,
+}
+
+supported_output = {
+    "pulse",
+    "return_toggle",
+    "fetch_toggle",
+    "fetch_yp",
+    "fetch_sp",
+    "fetch_ysp",
+    "fetch_o",
+    "return_p",
+    "return_sp",
+    "return_ysp",
+    "return_o",
+}
+
 
 states = set()
 
 
-def PUSHc(c, X):
-    assert c in {0, 1}
-    v = ("push", c, X)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
+def handle_output(output):
+    match output:
+        case "pulse":
+            print(f"pulse {variables["dx"]}")
+        case "fetch_toggle":
+            assert variables["active_axis"] == 0
+            if variables['dy'] & 1 == 1:
+                print("toggle y")
+            if variables['dz'] & 1 == variables['negative_z'] & 1:
+                print("toggle z")
+            if variables['dx'] & 1 == 1:
+                print("toggle x")
+        case "return_toggle":  # the two toggles can be merged if the output came at the end of the state,
+            # in which case active_axis would do the job
+            if variables['dx'] & 1 == 1:
+                print("toggle x")
+            if variables['dz'] & 1 == variables['negative_z'] & 1:
+                print("toggle z")
+            if variables['dy'] & 1 == 1:
+                print("toggle y")
+        case "fetch_yp":
+            print(f"install yp")
+        case "fetch_sp":
+            sign = ""
+            name = "x"
+            if variables["active_axis"] & 1 == 0:
+                sign = "-" if variables["negative_z"] else "+"
+                name = "z"
+            print(f"install {name}{"sp"}{sign}")
+        case "fetch_ysp":
+            print(f"install ysp")
+        case "fetch_o":
+            sign = ""
+            if variables["active_axis"] & 1 == 0:
+                sign = "-" if variables["negative_z"] else "+"
+            print(f"install {_name_map[variables["active_axis"]]}{"o"}{sign}")
+        case "return_p":
+            print(f"remove yp")
+        case "return_sp":
+            sign = ""
+            name = "x"
+            if variables["active_axis"] & 1 == 0:
+                sign = "-" if variables["negative_z"] else "+"
+                name = "z"
+            print(f"remove {name}{"sp"}{sign}")
+        case "return_ysp":
+            print(f"remove ysp")
+        case "return_o":
+            sign = ""
+            if variables["active_axis"] & 1 == 0:
+                sign = "-" if variables["negative_z"] else "+"
+            print(f"remove {_name_map[variables["active_axis"]]}{"o"}{sign}")
 
-    def push():
+
+class Instruction:
+    def __init__(self,
+                 stack_instruction,
+                 register_instruction,
+                 branch_instruction,
+                 first_register_address,
+                 second_register_address,
+                 true_branch,
+                 false_branch,
+                 output=None):
+        assert stack_instruction in supported_stack_instructions
+        assert register_instruction in supported_register_instructions
+        assert branch_instruction in supported_branch_instructions
+        assert output is None or output in supported_output
+        v = (stack_instruction,
+             register_instruction,
+             branch_instruction,
+             first_register_address,
+             second_register_address,
+             true_branch,
+             false_branch,
+             output)
+        if v in states:
+            print(f"duplicate state {v}")
+        states.add(v)
+        self.stack_instruction = stack_instruction
+        self.register_instruction = register_instruction
+        self.branch_instruction = branch_instruction
+        self.first_register_address = first_register_address
+        self.second_register_address = second_register_address
+        self.true_branch = true_branch
+        self.false_branch = false_branch
+        self.output = output
+
+    def __call__(self, *args, **kwargs):
         global stack
-        stack <<= 1
-        stack |= c
-        return X
-    return push
-
-
-def POP(IF_ONE, IF_ZERO):
-    v = ("pop", IF_ONE, IF_ZERO)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    def pop():
-        global stack
-        bit = stack & 1
-        stack >>= 1
-        return IF_ONE if bit == 1 else IF_ZERO
-    return pop
-
-
-def ADD(x, y, Y):
-    v = ("ADD", x, y, Y)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    def add():
         global variables
-        variables[y] += variables[x]
-        return Y
-    return add
+        if self.output is not None:
+            handle_output(self.output)
+        match self.stack_instruction:
+            case "TOGGLE":
+                stack ^= 1
+            case "PUSH_0":
+                stack <<= 1
+            case "PUSH_1":
+                stack <<= 1
+                stack |= 1
+            case "NONE":
+                pass
+            case _:
+                assert False
+        match self.register_instruction:
+            case "ADD":
+                operation_result = variables[self.first_register_address] + variables[self.second_register_address]
+            case "SUB":
+                operation_result = variables[self.second_register_address] - variables[self.first_register_address]
+            case "COPY":
+                operation_result = variables[self.first_register_address]
+            case "XOR":
+                operation_result = variables[self.first_register_address] ^ variables[self.second_register_address]
+            case _:
+                assert False
+        match self.branch_instruction:
+            case "NONE":
+                variables[self.second_register_address] = operation_result
+                return self.true_branch
+            case "POP":
+                variables[self.second_register_address] = operation_result
+                bit = stack & 1
+                stack >>= 1
+                return self.true_branch if bit == 1 else self.false_branch
+            case "NONZERO":
+                return self.true_branch if operation_result != 0 else self.false_branch
+            case "NEGATIVE":
+                return self.true_branch if operation_result < 0 else self.false_branch
+            case _:
+                assert False
 
 
-def SUB(x, y, Y):
-    v = ("SUB", x, y, Y)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    def sub():
-        global variables
-        variables[y] -= variables[x]
-        return Y
-    return sub
-
-def EQUALS(x, y, IF_TRUE, IF_FALSE):
-    v = ("EQUALS", x, y, IF_TRUE, IF_FALSE)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    def equals():
-        global variables
-        return IF_TRUE if variables[x] == variables[y] else IF_FALSE
-    return equals
+def PUSH(c, X, output=None):
+    return Instruction(stack_instruction=f"PUSH_{c}",
+                       register_instruction="COPY",
+                       branch_instruction="NONZERO",
+                       first_register_address="ZERO",
+                       second_register_address="ZERO",
+                       true_branch=X,
+                       false_branch=X,
+                       output=output)
 
 
-def G1(x, IF_TRUE, IF_FALSE):
-    v = ("G1", x, IF_TRUE, IF_FALSE)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    def ge2():
-        global variables
-        return IF_TRUE if variables[x] > 1 else IF_FALSE
-    return ge2
+def POP(X, Y, output=None):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="COPY",
+                       branch_instruction="POP",
+                       first_register_address="ZERO",
+                       second_register_address="ZERO",
+                       true_branch=X,
+                       false_branch=Y,
+                       output=output)
 
 
-def COPY(x, y, Z):
-    v = ("COPY", x, y, Z)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    def copy():
-        variables[y] = variables[x]
-        return Z
-    return copy
+def ADD(x, y, Y, output=None):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="ADD",
+                       branch_instruction="NONE",
+                       first_register_address=x,
+                       second_register_address=y,
+                       true_branch=Y,
+                       false_branch=Y,
+                       output=output)
 
 
-def UNDEFINED():
-    def undefined():
-        sys.stderr.write("Hit undefined behavior\n")
-        assert False
-    return undefined
+def SUB(x, y, Y, output=None):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="SUB",
+                       branch_instruction="NONE",
+                       first_register_address=x,
+                       second_register_address=y,
+                       true_branch=Y,
+                       false_branch=Y,
+                       output=output)
 
 
-def FETCH(X, cargo):
-    v = ("FETCH", X, cargo)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    global variables
-
-    def fetch():
-        nonlocal cargo
-        new_cargo = cargo
-        if _name_map[variables["active_axis"]] != "y" and new_cargo == "p":
-            new_cargo = "sp"
-        sign = ""
-        if variables["active_axis"] == Z_AXIS:
-            sign = "-" if variables["negative_z"] else "+"
-        print(f"install {_name_map[variables["active_axis"]]}{new_cargo}{sign}")
-        return X
-    return fetch
+def EQUALS(x, y, IF_TRUE, IF_FALSE, output=None):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="XOR",
+                       branch_instruction="NONZERO",
+                       first_register_address=x,
+                       second_register_address=y,
+                       true_branch=IF_FALSE,
+                       false_branch=IF_TRUE,
+                       output=output)
 
 
-def FETCH_BASE(X):
-    v = ("FETCH_BASE", X)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    global variables
+def LE(x, y, IF_TRUE, IF_FALSE, output=None):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="SUB",
+                       branch_instruction="NEGATIVE",
+                       first_register_address=x,
+                       second_register_address=y,
+                       true_branch=IF_FALSE,
+                       false_branch=IF_TRUE,
+                       output=output)
 
-    def fetch():
-        if variables['dy'] == 1:
-            print("toggle y")
-        if variables['dz'] == variables['negative_z']:
-            print("toggle z")
-        if variables['dx'] == 1:
-            print("toggle x")
-        return X
-    return fetch
+
+def COPY(x, y, Z, output=None):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="COPY",
+                       branch_instruction="NONE",
+                       first_register_address=x,
+                       second_register_address=y,
+                       true_branch=Z,
+                       false_branch=Z,
+                       output=output)
+
+
+def OUTPUT(X, output):
+    return Instruction(stack_instruction=f"NONE",
+                       register_instruction="COPY",
+                       branch_instruction="NONZERO",
+                       first_register_address="ZERO",
+                       second_register_address="ZERO",
+                       true_branch=X,
+                       false_branch=X,
+                       output=output)
 
 
 def RETURN(X, cargo):
-    v = ("RETURN", X)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    global variables
+    return OUTPUT(X, f"return_{cargo}")
 
-    def ret():
-        nonlocal cargo
-        new_cargo = cargo
-        if _name_map[variables["active_axis"]] != "y" and new_cargo == "p":
-            new_cargo = "sp"
-        sign = ""
-        if variables["active_axis"] == Z_AXIS:
-            sign = "-" if variables["negative_z"] else "+"
-        print(f"remove {_name_map[variables["active_axis"]]}{new_cargo}{sign}")
-        return X
 
-    return ret
-
-def RETURN_BASE(X):
-    v = ("RETURN_BASE", X)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    global variables
-
-    def fetch():
-        if variables['dx'] == 1:
-            print("toggle x")
-        if variables['dz'] == variables['negative_z']:
-            print("toggle z")
-        if variables['dy'] == 1:
-            print("toggle y")
-        return X
-    return fetch
-
-def PULSE(X):
-    v = ("PULSE", X)
-    if v in states:
-        print(f"duplicate state {v}")
-    states.add(v)
-    global variables
-    def pulse():
-        print(f"pulse {variables["dx"]}")
-        return X
-    return pulse
-
-TODO = -1
-UNUSED = -2
-HALT = -3
+HALT = -1
 
 instructions = {
     # begin main loop
@@ -296,35 +377,34 @@ instructions = {
     # recursively_remove_1
     901: COPY("ZERO", "dummy", 9),
     # determine_active_axis()
-    9: G1("dy", 10, 11),
+    9: LE("TWO", "dy", 10, 11),
     10: COPY("THREE", "active_axis", 26),
     11: EQUALS("THREE", "active_axis", 12, 15),
-    12: PUSHc(1, 14),
+    12: PUSH(1, 14),
 
-    14: PUSHc(1, 15),
+    14: PUSH(1, 15),
     # handle z
-    15: G1("dz", 16, 17),
+    15: LE("TWO", "dz", 16, 17),
     16: COPY("TWO", "active_axis", 26),
-    17: G1("active_axis", 18, 21),
-    18: PUSHc(1, 20),
+    17: LE("TWO", "active_axis", 18, 21),
+    18: PUSH(1, 20),
 
-    20: PUSHc(1, 21),
+    20: PUSH(1, 21),
     # handle x
-    21: G1("dx", 22, 23),
+    21: LE("TWO", "dx", 22, 23),
     22: COPY("ONE", "active_axis", 26),
-    23: PUSHc(1, 25),
+    23: PUSH(1, 25),
 
-    25: PUSHc(1, 2601),
+    25: PUSH(1, 2601),
     2601: COPY("ZERO", "active_axis", 26),
     # decode where we called determine_active_axis
-    26: G1("dummy", 28, 27),
+    26: LE("TWO", "dummy", 28, 27),
     27: EQUALS("ZERO", "dummy", 29, 52),
     28: EQUALS("TWO", "dummy", 81, 112),
 
     # recursively_remove_1 after call to determine_active_axis
-    29: EQUALS("ZERO", "active_axis", 30, 3208),
-    30: RETURN_BASE(31),
-    31: COPY("ONE", "just_removed", 61),  # return from rr1
+    29: EQUALS("ZERO", "active_axis", 31, 3208),
+    31: COPY("ONE", "just_removed", 61, "return_toggle"),  # return from rr1
 
     # Call modify_active_axis with various values of dummy
     3208: COPY("MINUS_TWO", "dummy", 33),
@@ -340,7 +420,7 @@ instructions = {
     37: ADD("dummy", "dx", 38),
     # decode where we called modify_active_axis
     # if true we were called in rr1
-    38: EQUALS("MINUS_TWO", "dummy", 47, 39),
+    38: EQUALS("MINUS_TWO", "dummy", 48, 39),
     # if true we were called in ri6
     39: EQUALS("TWO", "dummy", 61, 40),
     40: EQUALS("ONE", "dummy", 41, 51),
@@ -348,20 +428,22 @@ instructions = {
     41: POP(61, 901),
 
     # finish recursively_remove_1
-    47: FETCH(48, "sp"),
-    48: PUSHc(1, 49),
-    49: PUSHc(0, 50),
-    50: PUSHc(1, 51),
+    # 47: FETCH(48),
+
+    48: EQUALS("THREE", "active_axis", 4801, 4802),
+    4801: PUSH(1, 49, "fetch_ysp"),
+    4802: PUSH(1, 49, "fetch_sp"),
+    49: PUSH(0, 50),
+    50: PUSH(1, 51),
 
     # recursively install 1
     # call determine_active_axis
     51: COPY("ONE", "dummy", 9),
-    52: EQUALS("ZERO", "active_axis", 53, 55),
-    53: FETCH_BASE(54),
-    54: COPY("ZERO", "just_removed", 61),  # return from RI1
-    55: PUSHc(0, 56),
-    56: PUSHc(0, 57),
-    57: PUSHc(1, 3209),
+    52: EQUALS("ZERO", "active_axis", 54, 55),
+    54: COPY("ZERO", "just_removed", 61, "fetch_toggle"),  # return from RI1
+    55: PUSH(0, 56),
+    56: PUSH(0, 57),
+    57: PUSH(1, 3209),
 
     # process_stack_instruction
     61: EQUALS("ZERO", "just_removed", 62, 69),
@@ -370,7 +452,7 @@ instructions = {
     63: POP(76, 66),  # __1 0
     64: POP(67, 68),  # __0 0
 
-    66: POP(77, 102),  # _01 0
+    66: POP(77, 103),  # _01 0
     67: POP(126, 108),  # _10 0
     68: POP(99, 7601),  # _00 0
 
@@ -379,71 +461,72 @@ instructions = {
     70: POP(76, 73),  # __1 1
     71: POP(74, 75),  # __0 1
 
-    73: POP(118, 96),  # _01 1
-    74: POP(129, 90),  # _10 1
+    73: POP(119, 96),  # _01 1
+    74: POP(129, 93),  # _10 1
     75: POP(129, 7601),  # _00 1
     # 111 on stack, just_removed anything
     76: ADD("ONE", "active_axis", 61),
     7601: EQUALS("ONE", "negative_z", 801, 135),
 
     # rr2
-    77: PUSHc(0, 78),
-    78: PUSHc(1, 79),
-    79: PUSHc(0, 80),
+    77: PUSH(0, 78),
+    78: PUSH(1, 79),
+    79: PUSH(0, 80),
     80: COPY("TWO", "dummy", 9),
-    81: EQUALS("ZERO", "active_axis", 82, 86),
-    82: PULSE(8301),
-    8301: POP(8303, 8303),
+    81: EQUALS("ZERO", "active_axis", 8301, 87),
+    8301: POP(8303, 8303, "pulse"),
 
     8303: POP(83, 83),
     83: ADD("ONE", "active_axis", 901),
-    86: FETCH(87, "o"),
-    87: PUSHc(1, 88),
-    88: PUSHc(0, 89),
-    89: PUSHc(0, 3209),
 
-    # rr5
-    90: RETURN(93, "sp"),
+    87: PUSH(1, 88, "fetch_o"),
+    88: PUSH(0, 89),
+    89: PUSH(0, 3209),
 
-    92: PUSHc(0, 3201),
-    93: PUSHc(0, 94),
-    94: PUSHc(0, 95),
-    95: PUSHc(1, 92),
+    # rr5 is just 93
+
+    92: PUSH(0, 3201),
+    93: EQUALS("THREE", "active_axis", 9301, 9302),
+    9301: PUSH(0, 94, "return_ysp"),
+    9302: PUSH(0, 94, "return_sp"),
+    94: PUSH(0, 95),
+    95: PUSH(1, 92),
 
     # rr6
     96: COPY("ONE", "just_removed", 98),
-    98: PUSHc(1, 3201),
+    98: PUSH(1, 3201),
 
     # rr3
-    99: PUSHc(1, 100),
-    100: PUSHc(1, 101),
-    101: PUSHc(0, 901),
+    99: PUSH(1, 100),
+    100: PUSH(1, 101),
+    101: PUSH(0, 901),
 
     # ri2
-    102: FETCH(103, "p"),
-    103: PUSHc(0, 104),
-    104: PUSHc(1, 89),
+    103: EQUALS("THREE", "active_axis", 1031, 1032),
+    1031: PUSH(0, 104, "fetch_yp"),
+    1032: PUSH(0, 104, "fetch_sp"),
+    104: PUSH(1, 89),
 
     # ri3
-    108: PUSHc(1, 109),
-    109: PUSHc(0, 110),
-    110: PUSHc(1, 111),
+    108: PUSH(1, 109),
+    109: PUSH(0, 110),
+    110: PUSH(1, 111),
     111: COPY("THREE", "dummy", 9),
-    112: EQUALS("ZERO", "active_axis", 82, 120),
+    112: EQUALS("ZERO", "active_axis", 8301, 121),
 
     # ri6
-    118: RETURN(119, "p"),
-    119: COPY("ZERO", "just_removed", 3202),
+    119: EQUALS("THREE", "active_axis", 11901, 11902),
+    11901: COPY("ZERO", "just_removed", 3202, "return_p"),
+    11902: COPY("ZERO", "just_removed", 3202, "return_sp"),
 
     # other branch of ri3
-    120: FETCH(121, "o"),
-    121: PUSHc(1, 104),
-    # 122: PUSHc(1, 89),
+    121: PUSH(1, 104, "fetch_o"),
+    # 122: PUSH(1, 89),
     # call modify_active_axis
 
     # ri4
-    126: PUSHc(1, 127),
-    127: PUSHc(0, 101),
+    126: PUSH(1, 127),
+    127: PUSH(0, 101),
 
     # ri5
     129: RETURN(92, "o"),
@@ -459,12 +542,12 @@ def run_instructions(start=0):
     print(len(variables), len(instructions))
     print(variables)
     witnessed_variables = set()
+
     with open("test42b.txt", "w", encoding="utf-8") as f:
         out = sys.stdout
         sys.stdout = f
         while new_code != HALT:
             witnessed_variables.add(new_code)
-
             # print(new_code)
             # print(bin(stack))
             # print(variables)
@@ -474,4 +557,6 @@ def run_instructions(start=0):
         sys.stdout = out
     print(len(variables), len(instructions), len(witnessed_variables))
     print(variables)
+
+
 run_instructions()
