@@ -20,10 +20,10 @@ X_AXIS = 0b01
 NO_AXIS = 0b00
 
 STACK_FINISHED = 0b000
-AXIS_ADJUSTED = 0b111
+AXIS_ADJUSTED = 0b11
 CONTEXT_1 = 0b001
 CONTEXT_2 = 0b010
-CONTEXT_3 = 0b011
+CONTEXT_3 = 0b110
 CONTEXT_4 = 0b100
 CONTEXT_5 = 0b101
 
@@ -299,21 +299,21 @@ instructions = {
     9: G1("dy", 10, 11),
     10: COPY("THREE", "active_axis", 26),
     11: EQUALS("THREE", "active_axis", 12, 15),
-    12: PUSHc(1, 13),
-    13: PUSHc(1, 14),
+    12: PUSHc(1, 14),
+
     14: PUSHc(1, 15),
     # handle z
     15: G1("dz", 16, 17),
     16: COPY("TWO", "active_axis", 26),
     17: G1("active_axis", 18, 21),
-    18: PUSHc(1, 19),
-    19: PUSHc(1, 20),
+    18: PUSHc(1, 20),
+
     20: PUSHc(1, 21),
     # handle x
     21: G1("dx", 22, 23),
     22: COPY("ONE", "active_axis", 26),
-    23: PUSHc(1, 24),
-    24: PUSHc(1, 25),
+    23: PUSHc(1, 25),
+
     25: PUSHc(1, 2601),
     2601: COPY("ZERO", "active_axis", 26),
     # decode where we called determine_active_axis
@@ -367,22 +367,20 @@ instructions = {
     61: EQUALS("ZERO", "just_removed", 62, 69),
     62: POP(63, 64),  # ___ 0
 
-    63: POP(65, 66),  # __1 0
+    63: POP(76, 66),  # __1 0
     64: POP(67, 68),  # __0 0
 
-    65: POP(76, 126),  # _11 0
     66: POP(77, 102),  # _01 0
-    67: POP(UNUSED, 108),  # _10 0
+    67: POP(126, 108),  # _10 0
     68: POP(99, 7601),  # _00 0
 
     69: POP(70, 71),  # ___ 1
 
-    70: POP(72, 73),  # __1 1
+    70: POP(76, 73),  # __1 1
     71: POP(74, 75),  # __0 1
 
-    72: POP(76, 129),  # _11 1
     73: POP(118, 96),  # _01 1
-    74: POP(UNUSED, 90),  # _10 1
+    74: POP(129, 90),  # _10 1
     75: POP(129, 7601),  # _00 1
     # 111 on stack, just_removed anything
     76: ADD("ONE", "active_axis", 61),
@@ -395,8 +393,8 @@ instructions = {
     80: COPY("TWO", "dummy", 9),
     81: EQUALS("ZERO", "active_axis", 82, 86),
     82: PULSE(8301),
-    8301: POP(8302, 8302),
-    8302: POP(8303, 8303),
+    8301: POP(8303, 8303),
+
     8303: POP(83, 83),
     83: ADD("ONE", "active_axis", 901),
     86: FETCH(87, "o"),
@@ -417,9 +415,9 @@ instructions = {
     98: PUSHc(1, 3201),
 
     # rr3
-    99: PUSHc(0, 100),
+    99: PUSHc(1, 100),
     100: PUSHc(1, 101),
-    101: PUSHc(1, 901),
+    101: PUSHc(0, 901),
 
     # ri2
     102: FETCH(103, "p"),
@@ -439,8 +437,9 @@ instructions = {
 
     # other branch of ri3
     120: FETCH(121, "o"),
-    121: PUSHc(0, 122),
-    122: PUSHc(1, 57),
+    121: PUSHc(1, 122),
+    122: PUSHc(1, 123),
+    123: PUSHc(0, 3209),
     # call modify_active_axis
 
     # ri4
