@@ -284,22 +284,11 @@ instructions = {
     138: COPY("Y_HEIGHT", "y1", 139),
     139: COPY("C4", "y2", 140),
     140: COPY("ZERO", "first_loop", 0),
-    # 141: EQUALS("ZERO", "y1", 160, 142),
-    # 142: ADD("MINUS_ONE", "y1", 143),
-    # 143: COPY("ZERO", "z1", 144),
-    # 144: COPY("N", "z2", 145),
-    # 145: EQUALS("ZERO", "z2", 159, 146),
-    #     146: ADD("ONE", "z1", 147),
-    #     147: COPY("TWO", "x", 148),
-    #     148: EQUALS("C3", "x", 158, 5),
-    # # after processing first stack
-    # # after processing second stack
-    # 157: ADD("ONE", "x", 148),
-    # 158: ADD("MINUS_ONE", "z2", 145),
-    # 159: ADD("THREE", "y2", 141),
 
     # restore the variables to their initial states
-    160: COPY("ONE", "first_loop", HALT),
+    160: COPY("ONE", "first_loop", 161),
+    161: COPY("MINUS_ONE", "y2", 162),
+    162: COPY("C1", "y1", HALT),
 
     # recursively_remove_1
     901: COPY("ZERO", "dummy", 9),
