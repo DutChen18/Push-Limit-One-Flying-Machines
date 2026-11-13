@@ -308,9 +308,7 @@ instructions = {
     39: EQUALS("TWO", "dummy", 61, 40),
     40: EQUALS("ONE", "dummy", 41, 51),
     # called with 1
-    41: POP(42, 43),
-    42: POP(901, 61),  # _1 1
-    43: POP(901, 901),  # _0 1
+    41: POP(61, 901),
 
     # finish recursively_remove_1
     47: FETCH(48, "sp"),
@@ -373,15 +371,14 @@ instructions = {
 
     # rr5
     90: RETURN(93, "sp"),
-    91: PUSHc(0, 92),
+
     92: PUSHc(0, 3201),
     93: PUSHc(0, 94),
     94: PUSHc(0, 95),
-    95: PUSHc(1, 91),
+    95: PUSHc(1, 92),
 
     # rr6
-    96: COPY("ONE", "just_removed", 97),
-    97: PUSHc(0, 98),
+    96: COPY("ONE", "just_removed", 98),
     98: PUSHc(1, 3201),
 
     # rr3
@@ -424,14 +421,12 @@ instructions = {
     128: PUSHc(0, 901),
 
     # ri5
-    129: RETURN(130, "o"),
-    130: PUSHc(1, 131),
+    129: RETURN(131, "o"),
     131: PUSHc(0, 3201),
 
     # rr4
-    132: RETURN(133, "o"),
-    133: PUSHc(1, 134),
-    134: PUSHc(1, 3201),
+    132: RETURN(134, "o"),
+    134: PUSHc(0, 3201),
 
 }
 
