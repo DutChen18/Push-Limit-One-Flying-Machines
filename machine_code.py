@@ -306,18 +306,11 @@ instructions = {
     38: EQUALS("MINUS_TWO", "dummy", 47, 39),
     # if true we were called in ri6
     39: EQUALS("TWO", "dummy", 61, 40),
-    40: EQUALS("ONE", "dummy", 41, 44),
+    40: EQUALS("ONE", "dummy", 41, 51),
     # called with 1
     41: POP(42, 43),
     42: POP(901, 61),  # _1 1
     43: POP(901, 901),  # _0 1
-    # called with -1
-    44: POP(45, 46),
-    # 01 -1 on the stack means called in rr2
-    45: POP(51, 51),  # _1 -1
-    # 00 on the stack means called in ri1
-    # 10 on the stack means called in ri1
-    46: POP(51, 51),  # _0 -1
 
     # finish recursively_remove_1
     47: FETCH(48, "sp"),
@@ -333,10 +326,7 @@ instructions = {
     54: COPY("ZERO", "just_removed", 61),  # return from RI1
     55: PUSHc(0, 56),
     56: PUSHc(0, 57),
-    57: PUSHc(1, 58),
-    # first call to modify_active_axis with -1 as argument
-    58: PUSHc(0, 59),
-    59: PUSHc(0, 3209),
+    57: PUSHc(1, 3209),
 
     # process_stack_instruction
     61: EQUALS("ZERO", "just_removed", 62, 69),
@@ -376,12 +366,10 @@ instructions = {
     8302: POP(8303, 8303),
     8303: POP(83, 83),
     83: ADD("ONE", "active_axis", 901),
-    84: PUSHc(0, 85),
-    85: PUSHc(1, 3209),
     86: FETCH(87, "o"),
     87: PUSHc(1, 88),
     88: PUSHc(0, 89),
-    89: PUSHc(0, 84),
+    89: PUSHc(0, 3209),
 
     # rr5
     90: RETURN(93, "sp"),
@@ -405,9 +393,7 @@ instructions = {
     102: FETCH(103, "p"),
     103: PUSHc(0, 104),
     104: PUSHc(1, 105),
-    105: PUSHc(0, 106),
-    106: PUSHc(1, 107),
-    107: PUSHc(0, 3209),
+    105: PUSHc(0, 3209),
 
     # ri3
     108: PUSHc(1, 109),
@@ -429,10 +415,8 @@ instructions = {
     120: FETCH(121, "o"),
     121: PUSHc(0, 122),
     122: PUSHc(1, 123),
-    123: PUSHc(1, 124),
+    123: PUSHc(1, 3209),
     # call modify_active_axis
-    124: PUSHc(1, 125),
-    125: PUSHc(1, 3209),
 
     # ri4
     126: PUSHc(1, 127),
