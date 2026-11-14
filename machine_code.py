@@ -58,13 +58,13 @@ dynamic_variable_addresses = {c: (16 + i) for (i, c) in enumerate(dynamic_variab
 
 var_addresses = dynamic_variable_addresses | constant_addresses
 
-address_to_var = {v : k for k, v in var_addresses.items()}
+address_to_var = {v: k for k, v in var_addresses.items()}
+
 
 def to_binary_string(num, length):
     num &= ((1 << length) - 1)
     assert num >= 0
-    return ("0"*length + bin(num)[2:])[-length:]
-
+    return ("0" * length + bin(num)[2:])[-length:]
 
 
 variables = constants | dynamic_variables
@@ -89,7 +89,6 @@ supported_register_instructions = {
 }
 code_to_reg = {v: k for (k, v) in supported_register_instructions.items()}
 
-
 supported_stack_instructions = {
     "NONE": 0,
     "TOGGLE": 1,
@@ -100,19 +99,22 @@ supported_stack_instructions = {
 code_to_stack = {v: k for (k, v) in supported_stack_instructions.items()}
 
 supported_output = {
-    "pulse",
-    "return_toggle",
-    "fetch_toggle",
-    "fetch_yp",
-    "fetch_sp",
-    "fetch_ysp",
-    "fetch_o",
-    "fetch_yo",
-    "return_p",
-    "return_sp",
-    "return_ysp",
-    "return_o",
-    "return_yo"
+    "pulse": 2,
+    "return_toggle": 4,
+    "fetch_toggle": 6,
+
+    "return_sp": 8,
+    "fetch_sp": 10,
+
+    "return_o": 12,
+    "fetch_o": 14,
+
+    "return_ysp": 92,
+    "fetch_ysp": 96,
+    "return_p": 100,
+    "fetch_yp": 104,
+    "return_yo": 108,
+    "fetch_yo": 112,
 }
 
 states = set()
@@ -181,7 +183,6 @@ def handle_output(output):
             print(f"remove {name}{"o"}{sign}")
 
 
-
 def to_int(binary_string):
     return eval("0b" + binary_string)
 
@@ -213,6 +214,7 @@ def instruction_from_string(s):
     assert str(i) == s
     return i
 
+
 class Instruction:
     def __init__(self,
                  stack_instruction,
@@ -236,8 +238,8 @@ class Instruction:
                      true_branch,
                      false_branch,
                      output)
-        if self.data in states:
-            print(f"duplicate state {self.data}")
+        # if self.data in states:
+        #     print(f"duplicate state {self.data}")
         states.add(self.data)
         self.stack_instruction = stack_instruction
         self.register_instruction = register_instruction
@@ -482,13 +484,13 @@ instructions = {
 
     # 25: PUSH(1, 2601),
     2601: Instruction(stack_instruction=f"PUSH_1",
-                       register_instruction="COPY",
-                       branch_instruction="NONE",
-                       first_register_address="ZERO",
-                       second_register_address="active_axis",
-                       true_branch=26,
-                       false_branch=26,
-                       output=None),
+                      register_instruction="COPY",
+                      branch_instruction="NONE",
+                      first_register_address="ZERO",
+                      second_register_address="active_axis",
+                      true_branch=26,
+                      false_branch=26,
+                      output=None),
     # decode where we called determine_active_axis
     26: LE("TWO", "dummy", 28, 27),
     27: EQUALS("ZERO", "dummy", 29, 52),
@@ -569,13 +571,13 @@ instructions = {
     8301: POP(8303, 8303, "pulse"),
 
     8303: Instruction(stack_instruction=f"NONE",
-                       register_instruction="ADD",
-                       branch_instruction="POP",
-                       first_register_address="ONE",
-                       second_register_address="active_axis",
-                       true_branch=901,
-                       false_branch=901,
-                       output=None),
+                      register_instruction="ADD",
+                      branch_instruction="POP",
+                      first_register_address="ONE",
+                      second_register_address="active_axis",
+                      true_branch=901,
+                      false_branch=901,
+                      output=None),
 
     87: EQUALS("THREE", "active_axis", 8701, 8702),
     8701: PUSH(1, 88, "fetch_yo"),
@@ -587,13 +589,13 @@ instructions = {
 
     92: PUSH(0, 3201),
     93: Instruction(stack_instruction=f"PUSH_0",
-                       register_instruction="XOR",
-                       branch_instruction="NONZERO",
-                       first_register_address="THREE",
-                       second_register_address="active_axis",
-                       true_branch=9302,
-                       false_branch=9301,
-                       output=None),
+                    register_instruction="XOR",
+                    branch_instruction="NONZERO",
+                    first_register_address="THREE",
+                    second_register_address="active_axis",
+                    true_branch=9302,
+                    false_branch=9301,
+                    output=None),
     9301: PUSH(0, 95, "return_ysp"),
     9302: PUSH(0, 95, "return_sp"),
     95: PUSH(1, 92),
@@ -601,13 +603,13 @@ instructions = {
     # rr6
     96: COPY("ONE", "just_removed", 98),
     96: Instruction(stack_instruction=f"PUSH_1",
-                       register_instruction="COPY",
-                       branch_instruction="NONE",
-                       first_register_address="ONE",
-                       second_register_address="just_removed",
-                       true_branch=3201,
-                       false_branch=3201,
-                       output=None),
+                    register_instruction="COPY",
+                    branch_instruction="NONE",
+                    first_register_address="ONE",
+                    second_register_address="just_removed",
+                    true_branch=3201,
+                    false_branch=3201,
+                    output=None),
 
     # rr3
     99: PUSH(1, 100),
@@ -624,13 +626,13 @@ instructions = {
     108: PUSH(1, 109),
     109: PUSH(0, 110),
     110: Instruction(stack_instruction=f"PUSH_1",
-                       register_instruction="COPY",
-                       branch_instruction="NONE",
-                       first_register_address="THREE",
-                       second_register_address="dummy",
-                       true_branch=9,
-                       false_branch=9,
-                       output=None),
+                     register_instruction="COPY",
+                     branch_instruction="NONE",
+                     first_register_address="THREE",
+                     second_register_address="dummy",
+                     true_branch=9,
+                     false_branch=9,
+                     output=None),
     # 111: COPY("THREE", "dummy", 9),
     112: EQUALS("ZERO", "active_axis", 8301, 121),
 
@@ -660,64 +662,89 @@ instructions = {
 
 }
 
-# old_to_new = {255: 255}
-#
-# index = 0
-# for k in instructions:
-#     old_to_new[k] = index
-#     index += 1
-#
-# new_instructions = {}
-#
 
-#
-# machine_from_binary = {}
-#
-# for l in machine_code.strip().split("\n"):
-#     i = instruction_from_string(l)
-#     if i.output is not None:
-#         print(i.address, i.output)
-#     machine_from_binary[i.address] = i
-#
-# for k, v in instructions.items():
-#     (stack_instruction,
-#      register_instruction,
-#      branch_instruction,
-#      first_register_address,
-#      second_register_address,
-#      true_branch,
-#      false_branch,
-#      output) = v.get_data()
-#     true_branch = old_to_new[true_branch]
-#     false_branch = old_to_new[false_branch]
-#     new_instructions[old_to_new[k]] = Instruction(*(stack_instruction,
-#                                                     register_instruction,
-#                                                     branch_instruction,
-#                                                     first_register_address,
-#                                                     second_register_address,
-#                                                     true_branch,
-#                                                     false_branch,
-#                                                     output,
-#                                                     old_to_new[k]))
+def reindex_instructions(insts, old_start, old_halt):
+    old_to_new = {}
+    new_to_old = {}
+
+    for ind, inst in insts.items():
+        if inst.output is not None:
+            index = supported_output[inst.output]
+            if index in new_to_old:
+                index += 1
+            assert index not in new_to_old
+
+            old_to_new[ind] = index
+            new_to_old[index] = ind
+
+    print(old_to_new)
+    print(new_to_old)
+
+    for k in insts:
+        if k not in old_to_new:
+            index = 0
+            while index in new_to_old:
+                index += 1
+            old_to_new[k] = index
+            new_to_old[index] = k
+
+    old_to_new[old_halt] = old_to_new[old_start] + 128
+
+    new_instructions = {}
+    for k, v in insts.items():
+        (stack_instruction,
+         register_instruction,
+         branch_instruction,
+         first_register_address,
+         second_register_address,
+         true_branch,
+         false_branch,
+         output) = v.get_data()
+        true_branch = old_to_new[true_branch]
+        false_branch = old_to_new[false_branch]
+        new_instructions[old_to_new[k]] = Instruction(*(stack_instruction,
+                                                        register_instruction,
+                                                        branch_instruction,
+                                                        first_register_address,
+                                                        second_register_address,
+                                                        true_branch,
+                                                        false_branch,
+                                                        output,
+                                                        old_to_new[k]))
+    return new_instructions, old_to_new[old_start], old_to_new[old_halt]
+
+
+def from_observer_matrix(path):
+    machine = {}
+    with open(path) as f:
+        for l in f.readlines():
+            inst = instruction_from_string(l.strip())
+            machine[inst.address] = inst
+    return machine, 0, 128
 
 count = 0
+
+
 def run_instructions(start=0):
     global count
-    new_code = start
 
-    print(len(variables), len(instructions))
-    print(variables)
     witnessed_variables = set()
+    new_instructions, new_start, new_halt = from_observer_matrix("observer_matrix.txt") #  reindex_instructions(instructions, start, HALT)
+    new_code = new_start
 
+    # print(len(variables), len(instructions))
+    # print(variables)
+
+    print("Start:", new_start, "Halt:",new_halt)
     with open("test42b.txt", "w", encoding="utf-8") as f:
         out = sys.stdout
         sys.stdout = f
 
-        while new_code != HALT :
+        while new_code != new_halt:
             witnessed_variables.add(new_code)
 
             count += 1
-            current_instruction = instructions[new_code]
+            current_instruction = new_instructions[new_code]
             new_code = current_instruction()
 
             # print("Step:", count)
@@ -729,13 +756,13 @@ def run_instructions(start=0):
             # print()
             # time.sleep(0.1)
         sys.stdout = out
-    # print(f"Total {count} steps")
+    print(f"Total {count} steps")
     # print(len(variables), len(new_instructions), len(witnessed_variables))
     # print(variables)
-#
+    #
     # print(var_addresses)
-    # for i in machine_from_binary:
-    #     print(machine_from_binary[i], machine_from_binary[i].data)
+    # for i in range(len(new_instructions)):
+    #     print(new_instructions[i])
 
 
 run_instructions()
