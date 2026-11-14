@@ -107,10 +107,12 @@ supported_output = {
     "fetch_sp",
     "fetch_ysp",
     "fetch_o",
+    "fetch_yo",
     "return_p",
     "return_sp",
     "return_ysp",
     "return_o",
+    "return_yo"
 }
 
 states = set()
@@ -123,7 +125,6 @@ def handle_output(output):
         case "pulse":
             print(f"pulse {variables["dx"]}")
         case "fetch_toggle":
-            assert variables["active_axis"] == 0
             if variables['dy'] & 1 == 1:
                 print("toggle y")
             if variables['dz'] & 1 == variables['negative_z'] & 1:
@@ -149,11 +150,15 @@ def handle_output(output):
             print(f"install {name}{"sp"}{sign}")
         case "fetch_ysp":
             print(f"install ysp")
+        case "fetch_yo":
+            print("install yo")
         case "fetch_o":
             sign = ""
+            name = "x"
             if variables["active_axis"] & 1 == 0:
                 sign = "-" if variables["negative_z"] else "+"
-            print(f"install {_name_map[variables["active_axis"]]}{"o"}{sign}")
+                name = "z"
+            print(f"install {name}{"o"}{sign}")
         case "return_p":
             print(f"remove yp")
         case "return_sp":
@@ -165,11 +170,15 @@ def handle_output(output):
             print(f"remove {name}{"sp"}{sign}")
         case "return_ysp":
             print(f"remove ysp")
+        case "return_yo":
+            print(f"remove yo")
         case "return_o":
             sign = ""
+            name = "x"
             if variables["active_axis"] & 1 == 0:
                 sign = "-" if variables["negative_z"] else "+"
-            print(f"remove {_name_map[variables["active_axis"]]}{"o"}{sign}")
+                name = "z"
+            print(f"remove {name}{"o"}{sign}")
 
 
 
@@ -469,10 +478,17 @@ instructions = {
     # handle x
     21: LE("TWO", "dx", 22, 23),
     22: COPY("ONE", "active_axis", 26),
-    23: PUSH(1, 25),
+    23: PUSH(1, 2601),
 
-    25: PUSH(1, 2601),
-    2601: COPY("ZERO", "active_axis", 26),
+    # 25: PUSH(1, 2601),
+    2601: Instruction(stack_instruction=f"PUSH_1",
+                       register_instruction="COPY",
+                       branch_instruction="NONE",
+                       first_register_address="ZERO",
+                       second_register_address="active_axis",
+                       true_branch=26,
+                       false_branch=26,
+                       output=None),
     # decode where we called determine_active_axis
     26: LE("TWO", "dummy", 28, 27),
     27: EQUALS("ZERO", "dummy", 29, 52),
@@ -552,25 +568,46 @@ instructions = {
     81: EQUALS("ZERO", "active_axis", 8301, 87),
     8301: POP(8303, 8303, "pulse"),
 
-    8303: POP(83, 83),
-    83: ADD("ONE", "active_axis", 901),
+    8303: Instruction(stack_instruction=f"NONE",
+                       register_instruction="ADD",
+                       branch_instruction="POP",
+                       first_register_address="ONE",
+                       second_register_address="active_axis",
+                       true_branch=901,
+                       false_branch=901,
+                       output=None),
 
-    87: PUSH(1, 88, "fetch_o"),
+    87: EQUALS("THREE", "active_axis", 8701, 8702),
+    8701: PUSH(1, 88, "fetch_yo"),
+    8702: PUSH(1, 88, "fetch_o"),
     88: PUSH(0, 89),
     89: PUSH(0, 3209),
 
     # rr5 is just 93
 
     92: PUSH(0, 3201),
-    93: EQUALS("THREE", "active_axis", 9301, 9302),
-    9301: PUSH(0, 94, "return_ysp"),
-    9302: PUSH(0, 94, "return_sp"),
-    94: PUSH(0, 95),
+    93: Instruction(stack_instruction=f"PUSH_0",
+                       register_instruction="XOR",
+                       branch_instruction="NONZERO",
+                       first_register_address="THREE",
+                       second_register_address="active_axis",
+                       true_branch=9302,
+                       false_branch=9301,
+                       output=None),
+    9301: PUSH(0, 95, "return_ysp"),
+    9302: PUSH(0, 95, "return_sp"),
     95: PUSH(1, 92),
 
     # rr6
     96: COPY("ONE", "just_removed", 98),
-    98: PUSH(1, 3201),
+    96: Instruction(stack_instruction=f"PUSH_1",
+                       register_instruction="COPY",
+                       branch_instruction="NONE",
+                       first_register_address="ONE",
+                       second_register_address="just_removed",
+                       true_branch=3201,
+                       false_branch=3201,
+                       output=None),
 
     # rr3
     99: PUSH(1, 100),
@@ -586,8 +623,15 @@ instructions = {
     # ri3
     108: PUSH(1, 109),
     109: PUSH(0, 110),
-    110: PUSH(1, 111),
-    111: COPY("THREE", "dummy", 9),
+    110: Instruction(stack_instruction=f"PUSH_1",
+                       register_instruction="COPY",
+                       branch_instruction="NONE",
+                       first_register_address="THREE",
+                       second_register_address="dummy",
+                       true_branch=9,
+                       false_branch=9,
+                       output=None),
+    # 111: COPY("THREE", "dummy", 9),
     112: EQUALS("ZERO", "active_axis", 8301, 121),
 
     # ri6
@@ -596,7 +640,10 @@ instructions = {
     11902: COPY("ZERO", "just_removed", 3202, "return_sp"),
 
     # other branch of ri3
-    121: PUSH(1, 104, "fetch_o"),
+    121: EQUALS("THREE", "active_axis", 12101, 12102),
+
+    12101: PUSH(1, 104, "fetch_yo"),
+    12102: PUSH(1, 104, "fetch_o"),
     # 122: PUSH(1, 89),
     # call modify_active_axis
 
@@ -605,185 +652,60 @@ instructions = {
     127: PUSH(0, 101),
 
     # ri5
-    129: RETURN(92, "o"),
+    129: EQUALS("THREE", "active_axis", 12901, 12902),
+    12901: RETURN(92, "yo"),
+    12902: RETURN(92, "o"),
 
     # rr4 is ri5???
 
 }
 
-old_to_new = {255: 255}
+# old_to_new = {255: 255}
+#
+# index = 0
+# for k in instructions:
+#     old_to_new[k] = index
+#     index += 1
+#
+# new_instructions = {}
+#
 
-index = 0
-for k in instructions:
-    old_to_new[k] = index
-    index += 1
-
-new_instructions = {}
-
-machine_code = """
-00000000 11100110111110000000000000001011 None
-00000001 11000010011110000000001100110100 None
-00000010 01100010011110000000001111101000 None
-00000011 10010010010100000000000000010100 None
-00000100 11100010010100000000000000000100 None
-00000101 11100110010000000000000000000100 None
-00000110 10010110010000000000000000000001 None
-00000111 01100001011000000000000001010101 None
-00001000 10000101011000000000000000000001 None
-00001001 01100101011110000000000011001001 None
-00001010 11100001010000000000000000000001 None
-00001011 00010011011000000000000000010101 None
-00001100 00100011011110000000001111001110 None
-00001101 11001000111000000000000000000101 None
-00001110 01101111011000000000000000000001 None
-00001111 00101100111000000000000101010101 None
-00010000 11100001111000000000000001010001 None
-00010001 01001000111000000000000000000101 None
-00010010 10101100111000000000000000000001 None
-00010011 01101111011000000000000000010101 None
-00010100 01100001111000000001000100000000 None
-00010101 11100011010000000000000101000001 None
-00010110 11100101010100000000000101010101 None
-00010111 00000010011000000000000001010101 None
-00011000 10100110011000000000000000000001 None
-00011001 01100110111000000000000101000001 None
-00011010 11100110111000000000000000000001 None
-00011011 01010110011000000000000000010101 None
-00011100 01000010011000000101010000000101 None
-00011101 01100010111000000000000000000101 None
-00011110 00010000110111000000101010101011 None
-00011111 10010100011000000000010100000100 None
-00100000 10010100011110000000000000001001 None
-00100001 01100011001010110000000000000101 None
-00100010 01100011001010110000000000000001 None
-00100011 00010100110111000000000000010111 None
-00100100 00010100011000000000000001000001 None
-00100101 00010100010111000000000010101101 None
-00100110 01100011001010110000000000000001 None
-00100111 01100011001010110000000001010101 None
-00101000 00010111010111000000000000001011 None
-00101001 11100100011000000000000000010000 None
-00101010 01100011001010110000000000000001 None
-00101011 01100011001010110000000000010101 None
-00101100 01100100011000000000000000000001 None
-00101101 00010010110111000000000000000110 None
-00101110 01100010111110000010101101110110 None
-00101111 00010010111110000001110110001100 None
-00110000 01100100011110000000000000001011 None
-00110001 11100000011000000001010101000101 return_toggle
-00110010 11010010111000000000000000010000 None
-00110011 01010010111000000000000000010001 None
-00110100 11100010111000000000000000000100 None
-00110101 00010010111000000000000000000101 None
-00110110 10010100011110000000000010101011 None
-00110111 01011000110000000000000001010000 None
-00111000 00010100011110000000000000001011 None
-00111001 01011100110000000000000000000100 None
-00111010 01011111010000000000000000000001 None
-00111011 11010010111110000000000000011010 None
-00111100 00010010111110000011111100111110 None
-00111101 11100010111110000010101010001101 None
-00111110 01100011001001000010011000101111 None
-00111111 10010100011110000001010101010111 None
-01000000 01100011001010110000000000000100 fetch_ysp
-01000001 01100011001010110000000000000101 fetch_sp
-01000010 01100011001010100000000000000001 None
-01000011 01100011001010110000000000010101 None
-01000100 11100010111000000001000101000100 None
-01000101 01100100011110000000000000000111 None
-01000110 01100000011000000000000001010000 fetch_toggle
-01000111 01100011001010100000000001010101 None
-01001000 01100011001010100000000000000001 None
-01001001 01100011001010110001010101000100 None
-01001010 01100000011110000000001010001001 None
-01001011 01100011001001000000000000010110 None
-01001100 01100011001001000000001010000110 None
-01001101 01100011001001000000001111111011 None
-01001110 01100011001001000000111000101001 None
-01001111 01100011001001000000010111111010 None
-01010000 01100011001001000000101001100000 None
-01010001 01100011001001000000000000000110 None
-01010010 01100011001001000000000000011110 None
-01010011 01100011001001000000000000011011 None
-01010100 01100011001001000000011101011100 None
-01010101 01100011001001000000011110001010 None
-01010110 01100011001001000000100001111100 None
-01010111 11100100010000000000000101010001 None
-01011000 11100001111110000001000001100001 None
-01011001 01100011001010100000000000000101 None
-01011010 01100011001010110000000000000001 None
-01011011 01100011001010100000000000010101 None
-01011100 00010010111000000001000000000100 None
-01011101 01100100011110000000101010101111 None
-01011110 01100011001001000000000000000001 pulse
-01011111 01100011001001000000010101010101 None
-01100000 11100100010000000001010101010001 None
-01100001 01100011001010110000000000000101 fetch_o
-01100010 01100011001010100000000000000001 None
-01100011 01100011001010100001000100000000 None
-01100100 01100011001010100001000100000000 None
-01100101 10010100011110000000000000000111 None
-01100110 01100011001010100000000001010100 return_ysp
-01100111 01100011001010100000000001010101 return_sp
-01101000 01100011001010100000000000000001 None
-01101001 01100011001010110000000001010001 None
-01101010 11100000011000000000000000000001 None
-01101011 01100011001010110001000101010101 None
-01101100 01100011001010110000000000000001 None
-01101101 01100011001010110000000000000101 None
-01101110 01100011001010100001010100000101 None
-01101111 10010100011110000000000101010111 None
-01110000 01100011001010100000000000000100 fetch_yp
-01110001 01100011001010100000000000000101 fetch_sp
-01110010 01100011001010110000000100000001 None
-01110011 01100011001010110000000000010101 None
-01110100 01100011001010100000000000000001 None
-01110101 01100011001010110000000000000101 None
-01110110 10010010111000000001010001000000 None
-01110111 01100100011110000000110001100011 None
-01111000 10010100011110000000000000001011 None
-01111001 01100000011000000001000001010000 return_p
-01111010 01100000011000000001000001010101 return_sp
-01111011 01100011001010110000000001000001 fetch_o
-01111100 01100011001010110000000000000001 None
-01111101 01100011001010100000000100000101 None
-01111110 01100011001010000000000101000100 return_o"""
-
-machine_from_binary = {}
-
-for l in machine_code.strip().split("\n"):
-    i = instruction_from_string(l)
-    if i.output is not None:
-        print(i.address, i.output)
-    machine_from_binary[i.address] = i
-
-for k, v in instructions.items():
-    (stack_instruction,
-     register_instruction,
-     branch_instruction,
-     first_register_address,
-     second_register_address,
-     true_branch,
-     false_branch,
-     output) = v.get_data()
-    true_branch = old_to_new[true_branch]
-    false_branch = old_to_new[false_branch]
-    new_instructions[old_to_new[k]] = Instruction(*(stack_instruction,
-                                                    register_instruction,
-                                                    branch_instruction,
-                                                    first_register_address,
-                                                    second_register_address,
-                                                    true_branch,
-                                                    false_branch,
-                                                    output,
-                                                    old_to_new[k]))
+#
+# machine_from_binary = {}
+#
+# for l in machine_code.strip().split("\n"):
+#     i = instruction_from_string(l)
+#     if i.output is not None:
+#         print(i.address, i.output)
+#     machine_from_binary[i.address] = i
+#
+# for k, v in instructions.items():
+#     (stack_instruction,
+#      register_instruction,
+#      branch_instruction,
+#      first_register_address,
+#      second_register_address,
+#      true_branch,
+#      false_branch,
+#      output) = v.get_data()
+#     true_branch = old_to_new[true_branch]
+#     false_branch = old_to_new[false_branch]
+#     new_instructions[old_to_new[k]] = Instruction(*(stack_instruction,
+#                                                     register_instruction,
+#                                                     branch_instruction,
+#                                                     first_register_address,
+#                                                     second_register_address,
+#                                                     true_branch,
+#                                                     false_branch,
+#                                                     output,
+#                                                     old_to_new[k]))
 
 count = 0
 def run_instructions(start=0):
     global count
     new_code = start
 
-    print(len(variables), len(new_instructions))
+    print(len(variables), len(instructions))
     print(variables)
     witnessed_variables = set()
 
@@ -791,27 +713,29 @@ def run_instructions(start=0):
         out = sys.stdout
         sys.stdout = f
 
-        while new_code != HALT:
+        while new_code != HALT :
             witnessed_variables.add(new_code)
 
             count += 1
-            current_instruction = machine_from_binary[new_code]
+            current_instruction = instructions[new_code]
             new_code = current_instruction()
 
             # print("Step:", count)
             # print("Instruction just executed:", current_instruction.address, current_instruction)
+            # print("Instruction just executed:", current_instruction.data)
             # print("Next instruction:", new_code)
             # print("Stack:", bin(stack))
             # print("Variables:", variables)
+            # print()
             # time.sleep(0.1)
         sys.stdout = out
-    print(f"Total {count} steps")
-    print(len(variables), len(new_instructions), len(witnessed_variables))
-    print(variables)
-
-    print(var_addresses)
-    for i in machine_from_binary:
-        print(machine_from_binary[i], machine_from_binary[i].get_data())
+    # print(f"Total {count} steps")
+    # print(len(variables), len(new_instructions), len(witnessed_variables))
+    # print(variables)
+#
+    # print(var_addresses)
+    # for i in machine_from_binary:
+    #     print(machine_from_binary[i], machine_from_binary[i].data)
 
 
 run_instructions()
